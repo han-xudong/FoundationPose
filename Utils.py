@@ -107,7 +107,23 @@ set_logging_format()
 def make_mesh_tensors(mesh, device='cuda', max_tex_size=None):
   mesh_tensors = {}
   if isinstance(mesh.visual, trimesh.visual.texture.TextureVisuals):
-    img = np.array(mesh.visual.material.image.convert('RGB'))
+    # Try to get the texture image, handling both SimpleMaterial and PBRMaterial
+    mat = mesh.visual.material
+    img_pil = None
+    if hasattr(mat, 'image') and mat.image is not None:
+      img_pil = mat.image
+    elif hasattr(mat, 'baseColorTexture') and mat.baseColorTexture is not None:
+      img_pil = mat.baseColorTexture
+    elif hasattr(mat, 'main_color'):
+      # PBRMaterial: synthesize a solid-color texture from baseColorFactor
+      color = (np.array(mat.main_color[:3]) * 255).clip(0, 255).astype(np.uint8)
+      from PIL import Image as _PilImg
+      img_pil = _PilImg.fromarray(np.tile(color.reshape(1,1,3), (4,4,1)))
+    if img_pil is None:
+      # Fallback: grey texture
+      from PIL import Image as _PilImg
+      img_pil = _PilImg.fromarray(np.full((4,4,3), 128, dtype=np.uint8))
+    img = np.array(img_pil.convert('RGB'))
     img = img[...,:3]
     if max_tex_size is not None:
       max_size = max(img.shape[0], img.shape[1])

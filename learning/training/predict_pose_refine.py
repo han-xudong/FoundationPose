@@ -21,6 +21,13 @@ from Utils import *
 from datareader import *
 
 
+def _resolve_weights_root(code_dir):
+  env_dir = os.environ.get('FOUNDATIONPOSE_WEIGHTS_DIR')
+  if env_dir:
+    return os.path.realpath(env_dir)
+  return os.path.realpath(f'{code_dir}/../../weights')
+
+
 
 @torch.inference_mode()
 def make_crop_data_batch(render_size, ob_in_cams, mesh, rgb, depth, K, crop_ratio, xyz_map, normal_map=None, mesh_diameter=None, cfg=None, glctx=None, mesh_tensors=None, dataset:PoseRefinePairH5Dataset=None):
@@ -97,9 +104,10 @@ class PoseRefinePredictor:
     self.run_name = "2023-10-28-18-33-37"
     model_name = 'model_best.pth'
     code_dir = os.path.dirname(os.path.realpath(__file__))
-    ckpt_dir = f'{code_dir}/../../weights/{self.run_name}/{model_name}'
+    weights_root = _resolve_weights_root(code_dir)
+    ckpt_dir = f'{weights_root}/{self.run_name}/{model_name}'
 
-    self.cfg = OmegaConf.load(f'{code_dir}/../../weights/{self.run_name}/config.yml')
+    self.cfg = OmegaConf.load(f'{weights_root}/{self.run_name}/config.yml')
 
     self.cfg['ckpt_dir'] = ckpt_dir
     self.cfg['enable_amp'] = True
